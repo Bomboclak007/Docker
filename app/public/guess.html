@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Угадай ID — бинарный поиск</title>
+        <style>
+            /* Та же палитра, что и в style.css — Soft Neo-Brutalism */
+            :root {
+                --bg: #fdf4e3;
+
+                --paper: #ffffff;
+                --paper-2: #fffaf0;
+
+                --ink: #14110f;
+                --ink-soft: #3d3833;
+                --muted: #948b7e;
+
+                --line: #14110f;
+
+                --accent: #ff5c39;
+                --accent-2: #2b59ff;
+                --accent-3: #ffd23f;
+                --ok: #17a34a;
+                --danger: #d92d20;
+
+                --radius: 16px;
+                --radius-sm: 10px;
+
+                --sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+                --shadow: 7px 7px 0 var(--ink);
+                --shadow-sm: 4px 4px 0 var(--ink);
+                --shadow-xs: 2px 2px 0 var(--ink);
+            }
+
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                font-family: var(--sans);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 32px 24px;
+                background:
+                    radial-gradient(circle at 15% 20%, #ffe8cc 0%, transparent 40%),
+                    radial-gradient(circle at 85% 80%, #ffd6cf 0%, transparent 42%),
+                    radial-gradient(circle at 82% 12%, #d6e4ff 0%, transparent 38%),
+                    var(--bg);
+                color: var(--ink);
+                position: relative;
+                overflow: hidden;
+            }
+
+            body::before {
+                content: '';
+                position: fixed;
+                inset: 0;
+                background-image: radial-gradient(var(--ink) 1.4px, transparent 1.4px);
+                background-size: 26px 26px;
+                opacity: 0.07;
+                pointer-events: none;
+            }
+
+            .card {
+                position: relative;
+                width: 100%;
+                max-width: 560px;
+                padding: 54px 40px 40px;
+                background: var(--paper);
+                border: 3px solid var(--line);
+                border-radius: var(--radius);
+                box-shadow: var(--shadow);
+                color: var(--ink);
+            }
+
+            /* Круглая «наклейка» сверху карточки */
+            .card::before {
+                content: '✦';
+                position: absolute;
+                top: -22px;
+                left: 50%;
+                transform: translateX(-50%) rotate(-6deg);
+                width: 48px;
+                height: 48px;
+                display: grid;
+                place-items: center;
+                background: var(--accent-3);
+                border: 3px solid var(--line);
+                border-radius: 50%;
+                font-size: 1.15rem;
+                color: var(--ink);
+                box-shadow: var(--shadow-xs);
+            }
+
+            h1 {
+                font-family: var(--sans);
+                font-size: 1.95rem;
+                font-weight: 900;
+                letter-spacing: 0.02em;
+                text-transform: uppercase;
+                text-align: center;
+                line-height: 1.1;
+                margin-bottom: 18px;
+                color: var(--ink);
+            }
+
+            h1::after {
+                content: '';
+                display: block;
+                width: 68px;
+                height: 8px;
+                background: var(--accent);
+                border: 2px solid var(--line);
+                border-radius: 4px;
+                margin: 16px auto 0;
+            }
+
+            p {
+                font-size: 1rem;
+                line-height: 1.6;
+                color: var(--ink-soft);
+                margin-bottom: 24px;
+                text-align: center;
+            }
+
+            p b {
+                color: var(--ink);
+                font-weight: 800;
+            }
+
+            code {
+                font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+                font-size: 0.88em;
+                color: var(--paper);
+                background: var(--accent-2);
+                padding: 2px 8px;
+                border-radius: 6px;
+                border: 2px solid var(--line);
+            }
+
+            button {
+                font: inherit;
+                font-family: var(--sans);
+                font-size: 0.82rem;
+                font-weight: 900;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                padding: 14px 24px;
+                color: var(--paper);
+                background: var(--ink);
+                border: 2px solid var(--line);
+                border-radius: var(--radius-sm);
+                cursor: pointer;
+                box-shadow: var(--shadow-sm);
+                transition:
+                    transform 0.12s ease,
+                    box-shadow 0.12s ease,
+                    background 0.2s ease,
+                    filter 0.2s ease;
+            }
+
+            button:hover {
+                filter: brightness(1.06);
+                transform: translate(-2px, -2px);
+                box-shadow: 6px 6px 0 var(--line);
+            }
+
+            button:active {
+                transform: translate(4px, 4px);
+                box-shadow: 0 0 0 var(--line);
+            }
+
+            #start {
+                text-align: center;
+                margin-top: 10px;
+            }
+
+            #start button {
+                padding: 16px 42px;
+                background: var(--accent-2);
+            }
+
+            .progress {
+                text-align: center;
+                font-size: 0.78rem;
+                font-weight: 800;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: var(--muted);
+                margin-bottom: 26px;
+            }
+
+            .progress span {
+                color: var(--ink);
+                font-weight: 900;
+            }
+
+            .question {
+                text-align: center;
+                font-size: 1.3rem;
+                font-weight: 600;
+                color: var(--ink-soft);
+                margin-bottom: 28px;
+                line-height: 1.5;
+            }
+
+            .question b {
+                display: inline-block;
+                min-width: 58px;
+                padding: 4px 14px;
+                color: var(--paper);
+                background: var(--accent-2);
+                border: 2px solid var(--line);
+                border-radius: var(--radius-sm);
+                font-size: 1.35rem;
+                box-shadow: var(--shadow-xs);
+            }
+
+            .buttons {
+                display: flex;
+                gap: 16px;
+                justify-content: center;
+                margin-bottom: 24px;
+            }
+
+            .buttons button {
+                flex: 1;
+                max-width: 170px;
+            }
+
+            #btnYes {
+                background: var(--ok);
+            }
+
+            #btnNo {
+                background: var(--accent);
+            }
+
+            .history {
+                margin-top: 20px;
+                padding: 16px 18px;
+                border: 2px dashed var(--line);
+                border-radius: var(--radius-sm);
+                background: var(--paper-2);
+                font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+                font-size: 0.85rem;
+                color: var(--ink-soft);
+                max-height: 180px;
+                overflow-y: auto;
+                line-height: 1.8;
+            }
+
+            .history:empty {
+                display: none;
+            }
+
+            .history div {
+                animation: fadeIn 0.25s ease;
+            }
+
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(-4px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            #result {
+                margin-top: 20px;
+            }
+
+            .found {
+                padding: 28px 24px;
+                border: 3px solid var(--line);
+                border-radius: var(--radius);
+                background: var(--paper-2);
+                box-shadow: var(--shadow-sm);
+                text-align: center;
+                animation: reveal 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            }
+
+            @keyframes reveal {
+                from {
+                    opacity: 0;
+                    transform: scale(0.94);
+                    filter: blur(3px);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1);
+                    filter: blur(0);
+                }
+            }
+
+            .found > div:first-child {
+                font-size: 1.05rem;
+                font-weight: 700;
+                color: var(--ink);
+                margin-bottom: 20px;
+                letter-spacing: 0.02em;
+            }
+
+            .found > div:first-child b {
+                color: var(--accent);
+                font-weight: 900;
+            }
+
+            .found dl {
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 10px 16px;
+                text-align: left;
+                margin-bottom: 24px;
+                padding: 18px;
+                background: var(--paper);
+                border: 2px solid var(--line);
+                border-radius: var(--radius-sm);
+            }
+
+            .found dt {
+                font-family: var(--sans);
+                font-size: 0.7rem;
+                font-weight: 800;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: var(--muted);
+                align-self: center;
+            }
+
+            .found dd {
+                font-family: var(--sans);
+                color: var(--ink);
+                font-weight: 600;
+                word-break: break-word;
+            }
+
+            .error {
+                text-align: center;
+                padding: 20px;
+                color: var(--danger);
+                font-weight: 700;
+                border: 3px solid var(--danger);
+                background: #fff5f4;
+                border-radius: var(--radius);
+                box-shadow: 5px 5px 0 var(--danger);
+            }
+
+            .history::-webkit-scrollbar {
+                width: 8px;
+            }
+
+            .history::-webkit-scrollbar-track {
+                background: transparent;
+            }
+
+            .history::-webkit-scrollbar-thumb {
+                background: var(--ink);
+                border-radius: 4px;
+                border: 2px solid var(--paper-2);
+            }
+        </style>
+    </head>
+    <body>
+        <main class="card">
+            <h1>Угадай ID</h1>
+            <p>
+                Загадайте любой <b>id</b> из таблицы <code>requests</code>. Я угадаю его за ~7
+                вопросов «больше / не больше».
+            </p>
+
+            <div id="start">
+                <button id="btnStart">Начать</button>
+            </div>
+
+            <div id="game" hidden>
+                <p class="progress">
+                    Шаг <span id="step">1</span>. Диапазон: [<span id="lo">?</span>,
+                    <span id="hi">?</span>]
+                </p>
+                <p class="question">Ваш id больше <b id="mid">?</b>?</p>
+                <div class="buttons">
+                    <button id="btnYes">Да</button>
+                    <button id="btnNo">Нет</button>
+                </div>
+                <div class="history" id="history"></div>
+            </div>
+
+            <div id="result"></div>
+        </main>
+
+        <script>
+            const $ = (id) => document.getElementById(id);
+
+            let lo = null,
+                hi = null,
+                mid = null,
+                steps = 0;
+
+            async function loadRange() {
+                const res = await fetch('/api/guess/range');
+                const data = await res.json();
+
+                if (!data.total || data.total === '0') {
+                    throw new Error('Таблица requests пуста — нечего угадывать');
+                }
+
+                lo = Number(data.min_id);
+                hi = Number(data.max_id);
+            }
+
+            function nextMid() {
+                return Math.floor((lo + hi) / 2);
+            }
+
+            function render() {
+                $('step').textContent = steps;
+                $('lo').textContent = lo;
+                $('hi').textContent = hi;
+                $('mid').textContent = mid;
+            }
+
+            function log(text) {
+                const el = $('history');
+                const line = document.createElement('div');
+                line.textContent = text;
+                el.appendChild(line);
+            }
+
+            async function finish() {
+                $('game').hidden = true;
+
+                try {
+                    const res = await fetch(`/api/guess/item?id=${mid}`);
+                    if (!res.ok) throw new Error('не найдено');
+
+                    const item = await res.json();
+
+                    $('result').innerHTML = `
+                    <div class="found">
+                        <div>Угадал за <b>${steps}</b> шагов. Ваш id = <b>${item.id}</b></div>
+                        <dl>
+                            <dt>ФИО</dt><dd>${escapeHtml(item.full_name)}</dd>
+                            <dt>Телефон</dt><dd>${escapeHtml(item.phone)}</dd>
+                            <dt>Email</dt><dd>${escapeHtml(item.email)}</dd>
+                            <dt>Сообщение</dt><dd>${escapeHtml(item.message)}</dd>
+                            <dt>Создано</dt><dd>${item.created_at}</dd>
+                        </dl>
+                        <button onclick="location.reload()">Ещё раз</button>
+                    </div>
+                `;
+                } catch (e) {
+                    $('result').innerHTML =
+                        `<p class="error">Ошибка загрузки записи: ${e.message}</p>`;
+                }
+            }
+
+            function escapeHtml(s) {
+                return String(s).replace(
+                    /[&<>"']/g,
+                    (c) =>
+                        ({
+                            '&': '&amp;',
+                            '<': '&lt;',
+                            '>': '&gt;',
+                            '"': '&quot;',
+                            "'": '&#39;',
+                        })[c],
+                );
+            }
+
+            function answerYes() {
+                log(`> ${mid} → да`);
+                lo = mid + 1;
+                step();
+            }
+
+            function answerNo() {
+                log(`> ${mid} → нет`);
+                hi = mid;
+                step();
+            }
+
+            function step() {
+                if (lo >= hi) {
+                    mid = lo;
+                    finish();
+                    return;
+                }
+
+                mid = nextMid();
+                steps++;
+                render();
+            }
+
+            async function start() {
+                $('start').hidden = true;
+                $('game').hidden = false;
+                $('result').innerHTML = '';
+                $('history').innerHTML = '';
+
+                try {
+                    await loadRange();
+                } catch (e) {
+                    $('game').hidden = true;
+                    $('result').innerHTML = `<p class="error">${e.message}</p>`;
+                    return;
+                }
+
+                mid = nextMid();
+                steps = 1;
+                render();
+
+                $('btnYes').onclick = answerYes;
+                $('btnNo').onclick = answerNo;
+            }
+
+            $('btnStart').onclick = start;
+        </script>
+    </body>
+</html>

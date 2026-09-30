@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Форма заявки</title>
+        <link rel="stylesheet" href="./style.css" />
+    </head>
+    <body>
+        <main>
+            <h1>Оставить заявку</h1>
+            <form id="requestForm">
+                <label>
+                    ФИО
+                    <input type="text" name="fullName" required />
+                </label>
+                <label>
+                    Телефон
+                    <input type="tel" name="phone" required />
+                </label>
+                <label>
+                    Email
+                    <input type="email" name="email" required />
+                </label>
+                <label>
+                    Сообщение
+                    <textarea name="message" required></textarea>
+                </label>
+                <button type="submit">Отправить</button>
+            </form>
+            <p id="status" data-text="ПРИНЯТО"></p>
+        </main>
+
+        <script>
+            const form = document.getElementById('requestForm');
+            const status = document.getElementById('status');
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const data = Object.fromEntries(new FormData(form));
+
+                try {
+                    const res = await fetch('/requests', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data),
+                    });
+
+                    const json = await res.json();
+                    status.textContent = json.message;
+                    form.reset();
+                } catch {
+                    status.textContent = 'Ошибка при отправке';
+                }
+            });
+        </script>
+    </body>
+</html>
